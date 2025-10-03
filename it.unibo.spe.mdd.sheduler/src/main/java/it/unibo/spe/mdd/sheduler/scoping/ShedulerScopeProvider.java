@@ -13,8 +13,6 @@ import org.eclipse.xtext.EcoreUtil2;
 import org.eclipse.xtext.scoping.IScope;
 import org.eclipse.xtext.scoping.Scopes;
 
-import java.util.Set;
-
 /**
  * This class contains custom scoping description.
  * 
@@ -25,6 +23,16 @@ public class ShedulerScopeProvider extends AbstractShedulerScopeProvider {
 
     @Override
     public IScope getScope(EObject context, EReference reference) {
+        if (context instanceof Task
+                && (reference == ShedulerPackage.Literals.TASK__AFTER || reference == ShedulerPackage.Literals.TASK__BEFORE)) {
+            TaskPool pool = EcoreUtil2.getContainerOfType(context, TaskPool.class);
+            return Scopes.scopeFor(
+                    pool.getTasks().stream()
+                            .filter(t -> !context.equals(t))
+                            .filter(t -> t.getName() != null)
+                            .toList()
+            );
+        }
         return super.getScope(context, reference);
     }
 }
