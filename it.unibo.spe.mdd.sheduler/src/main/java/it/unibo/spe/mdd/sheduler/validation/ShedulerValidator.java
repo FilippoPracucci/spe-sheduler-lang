@@ -131,8 +131,11 @@ public class ShedulerValidator extends AbstractShedulerValidator {
     @Check(CheckType.FAST)
     public void ensureNoPeriodicityForBeforeAfterTask(Task task) {
         if (task.getAfter() != null || task.getBefore() != null) {
-            if (task.getPeriod() != null) {
-                error("Task scheduled before/after another one must not have periodicity", task, ShedulerPackage.Literals.TASK__PERIOD, 0);
+            if (task.getRelative() != null) {
+                error("Task scheduled before/after another one must not have relative time", task.getRelative(), ShedulerPackage.Literals.TASK__RELATIVE, 0);
+            }
+            if (task.getAbsolute() != null) {
+                error("Task scheduled before/after another one must not have absolute time", task.getAbsolute(), ShedulerPackage.Literals.TASK__ABSOLUTE, 0);
             }
         }
     }
