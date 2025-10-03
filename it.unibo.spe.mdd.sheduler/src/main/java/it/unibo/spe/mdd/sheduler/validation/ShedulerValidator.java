@@ -31,4 +31,109 @@ public class ShedulerValidator extends AbstractShedulerValidator {
             error("Day must be between 1 and 31", date, ShedulerPackage.Literals.DATE__DAY, 0);
         }
     }
+
+    @Check(CheckType.FAST)
+    public void checkRelativeTimeIsRepresentable(RelativeTime relativeTime) {
+        try {
+            TimeUtils.toDuration(relativeTime);
+        } catch (ArithmeticException e) {
+            warning("Relative time is not representable on the JVM", relativeTime, ShedulerPackage.Literals.RELATIVE_TIME__TIME_SPANS, 0);
+        }
+    }
+
+    @Check(CheckType.FAST)
+    public void checkAbsoluteTimeIsRepresentable(AbsoluteTime absoluteTime) {
+        try {
+            TimeUtils.toLocalDateTime(absoluteTime);
+        } catch (ArithmeticException e) {
+            warning("Absolute time is not representable on the JVM", absoluteTime, ShedulerPackage.Literals.ABSOLUTE_TIME__DATE, 0);
+        }
+    }
+
+    @Check(CheckType.FAST)
+    public void checkAbsoluteTimeIsInTheFuture(AbsoluteTime absoluteTime) {
+        if (!TimeUtils.toLocalDateTime(absoluteTime).isAfter(LocalDateTime.now())) {
+            warning("Absolute time should be in the future", absoluteTime, ShedulerPackage.Literals.ABSOLUTE_TIME__TIME, 0);
+        }
+    }
+
+    @Check(CheckType.FAST)
+    public void ensureClockTimeIsValid(ClockTime clockTime) {
+        if (clockTime.getHour() < 0 || clockTime.getHour() > 23) {
+            error("Hour must be between 0 and 23", clockTime, ShedulerPackage.Literals.CLOCK_TIME__HOUR, 0);
+        }
+        if (clockTime.getMinute() < 0 || clockTime.getMinute() > 59) {
+            error("Minute must be between 0 and 59", clockTime, ShedulerPackage.Literals.CLOCK_TIME__MINUTE, 0);
+        }
+        if (clockTime.getSecond() < 0 || clockTime.getSecond() > 59) {
+            error("Second must be between 0 and 59", clockTime, ShedulerPackage.Literals.CLOCK_TIME__SECOND, 0);
+        }
+        if (clockTime.getMillisecond() < 0 || clockTime.getMillisecond() > 999) {
+            error("Millisecond must be between 0 and 999", clockTime, ShedulerPackage.Literals.CLOCK_TIME__MILLISECOND, 0);
+        }
+        if (clockTime.getNanosecond() < 0 || clockTime.getNanosecond() > 999) {
+            error("Nanosecond must be between 0 and 999", clockTime, ShedulerPackage.Literals.CLOCK_TIME__NANOSECOND, 0);
+        }
+    }
+
+    @Check(CheckType.FAST)
+    public void ensureTimeSpanIsValid(TimeSpan timeSpan) {
+        if (timeSpan.getDuration() < 0) {
+            error("Duration must not be negative", timeSpan, ShedulerPackage.Literals.TIME_SPAN__DURATION, 0);
+        }
+        switch (timeSpan.getUnit()) {
+            case MILLISECONDS, NANOSECONDS -> {
+                if (timeSpan.getDuration() >= 1000) {
+                    error("Duration must be less than 1000", timeSpan, ShedulerPackage.Literals.TIME_SPAN__DURATION, 0);
+                }
+            }
+            case MINUTES, SECONDS -> {
+                if (timeSpan.getDuration() >= 60) {
+                    error("Duration must be less than 60", timeSpan, ShedulerPackage.Literals.TIME_SPAN__DURATION, 0);
+                }
+            }
+            case HOURS -> {
+                if (timeSpan.getDuration() >= 24) {
+                    error("Duration must be less than 24", timeSpan, ShedulerPackage.Literals.TIME_SPAN__DURATION, 0);
+                }
+            }
+        }
+    }
+
+    @Check(CheckType.FAST)
+    public void ensureTaskNamesAreUniqueWithinPool(TaskPool taskPool) {
+        final Set<String> names = new HashSet<>();
+        for (Task task: taskPool.getTasks()) {
+            if (names.contains(task.getName())) {
+                error("Repeated task name " + task.getName() + " in the pool", task, ShedulerPackage.Literals.TASK__NAME, 0);
+            } else {
+                if (task.getName() != null) {
+                    names.add(task.getName());
+                }
+            }
+        }
+    }
+
+    @Check(CheckType.FAST)
+    public void ensurePoolNamesAreUnique(TaskPoolSet taskPools) {
+        final Set<String> names = new HashSet<>();
+        for (TaskPool pool: taskPools.getPools()) {
+            if (names.contains(pool.getName())) {
+                error("Repeated pool name " + pool.getName(), pool, ShedulerPackage.Literals.TASK_POOL__NAME, 0);
+            } else {
+                if (pool.getName() != null) {
+                    names.add(pool.getName());
+                }
+            }
+        }
+    }
+
+    @Check(CheckType.FAST)
+    public void ensureNoPeriodicityForBeforeAfterTask(Task task) {
+        if (task.getAfter() != null || task.getBefore() != null) {
+            if (task.getPeriod() != null) {
+                error("Task scheduled before/after another one must not have periodicity", task, ShedulerPackage.Literals.TASK__PERIOD, 0);
+            }
+        }
+    }
 }
